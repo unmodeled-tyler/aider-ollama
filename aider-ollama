@@ -2,7 +2,7 @@
 
 # ============================================================================
 # aider-ollama - Interactive Ollama model selector for Aider
-# https://github.com/YOUR_USERNAME/aider-ollama-launcher
+# https://github.com/unmodeled-tyler/aider-ollama
 # ============================================================================
 #
 # A wrapper script that provides an interactive model selection interface
@@ -12,7 +12,7 @@
 #   aider-ollama [aider options]
 #
 # Examples:
-#   aider-ollama                    # Select model interactively, then start aider
+#   aider-ollama                    # Select model & edit format interactively
 #   aider-ollama --no-git           # Select model, start aider without git integration
 #   aider-ollama file1.py file2.py  # Select model, start aider with specific files
 #
@@ -29,7 +29,17 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Edit format descriptions for the menu
+declare -A EDIT_FORMAT_DESC
+EDIT_FORMAT_DESC["diff"]="diff (recommended) - Uses search/replace blocks, works with most models"
+EDIT_FORMAT_DESC["whole"]="whole - Rewrites entire files, simple but can be slow for large files"
+EDIT_FORMAT_DESC["udiff"]="udiff - Unified diff format, good for experienced models"
+EDIT_FORMAT_DESC["diff-fenced"]="diff-fenced - Diff with fenced code blocks"
+EDIT_FORMAT_DESC["architect"]="architect - Plan first, then edit (best for complex tasks)"
 
 # Check dependencies
 check_dependencies() {
@@ -110,17 +120,51 @@ fetch_models() {
     echo "$models"
 }
 
+# Select edit format
+select_edit_format() {
+    echo -e "${CYAN}Select edit format${NC} (↑↓ navigate, Enter to select):"
+    echo ""
+    
+    local formats="diff (recommended) - Search/replace blocks, works with most models
+whole - Rewrites entire files, simple but slow for large files  
+udiff - Unified diff format, good for capable models
+architect - Plan first, then edit (best for complex changes)"
+    
+    local selected
+    selected=$(echo "$formats" | fzf \
+        --height=30% \
+        --reverse \
+        --border=rounded \
+        --prompt="📝 Format > " \
+        --header="Edit Format (how aider applies changes to files)" \
+        --preview-window=hidden \
+        --color="header:yellow,prompt:cyan")
+    
+    if [ -z "$selected" ]; then
+        echo "diff"  # Default
+        return
+    fi
+    
+    # Extract just the format name (first word)
+    echo "$selected" | awk '{print $1}'
+}
+
 # Main function
 main() {
     check_dependencies
     activate_venv
     check_aider
     
+    echo -e "${BOLD}╔═══════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║       🤖 Aider + Ollama Launcher      ║${NC}"
+    echo -e "${BOLD}╚═══════════════════════════════════════╝${NC}"
+    echo ""
+    
     echo -e "${BLUE}Fetching available Ollama models...${NC}"
     local models
     models=$(fetch_models)
     
-    echo -e "${GREEN}Select a model${NC} (↑↓ navigate, type to filter, Enter to select, Ctrl-C to cancel):"
+    echo -e "${GREEN}Step 1/2: Select a model${NC} (↑↓ navigate, type to filter, Enter to select):"
     echo ""
     
     local selected_model
@@ -138,12 +182,43 @@ main() {
         exit 0
     fi
     
-    echo ""
-    echo -e "${GREEN}Starting aider with ollama/${selected_model}${NC}"
+    echo -e "Selected: ${GREEN}$selected_model${NC}"
     echo ""
     
-    # Run aider with the selected model and any additional arguments
-    exec aider --model "ollama/$selected_model" "$@"
+    echo -e "${GREEN}Step 2/2: Select edit format${NC}"
+    local edit_format
+    edit_format=$(select_edit_format)
+    
+    # Handle architect mode specially (it's a flag, not an edit format)
+    local extra_args=""
+    if [ "$edit_format" = "architect" ]; then
+        extra_args="--architect"
+        edit_format=""
+    fi
+    
+    echo ""
+    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}Launching aider...${NC}"
+    echo -e "  Model: ${CYAN}ollama/$selected_model${NC}"
+    if [ -n "$extra_args" ]; then
+        echo -e "  Mode:  ${CYAN}architect${NC}"
+    elif [ -n "$edit_format" ]; then
+        echo -e "  Format: ${CYAN}$edit_format${NC}"
+    fi
+    echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    
+    # Build the command
+    local cmd="aider --model ollama/$selected_model"
+    if [ -n "$edit_format" ]; then
+        cmd="$cmd --edit-format $edit_format"
+    fi
+    if [ -n "$extra_args" ]; then
+        cmd="$cmd $extra_args"
+    fi
+    
+    # Run aider with the selected model, format, and any additional arguments
+    exec $cmd "$@"
 }
 
 main "$@"
