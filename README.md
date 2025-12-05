@@ -1,10 +1,11 @@
 # aider-ollama-launcher
 
-🚀 **An interactive model selector for using [Aider](https://aider.chat) with [Ollama](https://ollama.ai)**
+**An interactive model selector for using [Aider](https://aider.chat) with [Ollama](https://ollama.com)**
+<img width="1034" height="718" alt="Screenshot from 2025-12-05 14-21-47" src="https://github.com/user-attachments/assets/32344fa3-ef4e-4b38-aa43-8d0106f570d9" />
+
 
 Tired of typing `aider --model ollama/some-long-model-name:tag` every time? This simple wrapper gives you a beautiful interactive menu to select from all your available Ollama models.
 
-![Demo](demo.gif)
 
 ## Features
 
@@ -164,6 +165,6 @@ MIT License - see [LICENSE](LICENSE)
 
 ## Credits
 
-- [Aider](https://aider.chat) - AI pair programming in your terminal
-- [Ollama](https://ollama.ai) - Run LLMs locally
+- [Aider](https://github.com/Aider-AI/aider) - AI pair programming in your terminal
+- [Ollama](https://ollama.com) - Run LLMs locally
 - [fzf](https://github.com/junegunn/fzf) - A command-line fuzzy finder
