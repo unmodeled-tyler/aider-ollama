@@ -1,4 +1,4 @@
-# aider-ollama-launcher
+# aider-ollama
 
 **An interactive model selector for using [Aider](https://aider.chat) with [Ollama](https://ollama.com)**
 <img width="1034" height="718" alt="Screenshot from 2025-12-05 14-21-47" src="https://github.com/user-attachments/assets/32344fa3-ef4e-4b38-aa43-8d0106f570d9" />
@@ -48,7 +48,7 @@ pip install aider-chat
 
 ```bash
 # Download the script
-curl -o ~/.local/bin/aider-ollama https://raw.githubusercontent.com/YOUR_USERNAME/aider-ollama-launcher/main/aider-ollama
+curl -o ~/.local/bin/aider-ollama https://raw.githubusercontent.com/unmodeled-tyler/aider-ollama/main/aider-ollama
 chmod +x ~/.local/bin/aider-ollama
 
 # Add to your shell config (bash)
@@ -60,8 +60,8 @@ source ~/.bashrc
 ### Option 2: Clone the Repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/aider-ollama-launcher.git
-cd aider-ollama-launcher
+git clone https://github.com/unmodeled-tyler/aider-ollama.git
+cd aider-ollama
 ./install.sh
 ```
 
