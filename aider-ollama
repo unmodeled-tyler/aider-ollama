@@ -1,0 +1,149 @@
+#!/bin/bash
+
+# ============================================================================
+# aider-ollama - Interactive Ollama model selector for Aider
+# https://github.com/YOUR_USERNAME/aider-ollama-launcher
+# ============================================================================
+#
+# A wrapper script that provides an interactive model selection interface
+# for using Aider (https://aider.chat) with Ollama (https://ollama.ai)
+#
+# Usage:
+#   aider-ollama [aider options]
+#
+# Examples:
+#   aider-ollama                    # Select model interactively, then start aider
+#   aider-ollama --no-git           # Select model, start aider without git integration
+#   aider-ollama file1.py file2.py  # Select model, start aider with specific files
+#
+# ============================================================================
+
+set -e
+
+# Configuration
+OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://localhost:11434}"
+AIDER_VENV="${AIDER_VENV:-}"  # Optional: path to aider's virtualenv
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Check dependencies
+check_dependencies() {
+    local missing=()
+    
+    if ! command -v fzf &> /dev/null; then
+        missing+=("fzf")
+    fi
+    
+    if ! command -v jq &> /dev/null; then
+        missing+=("jq")
+    fi
+    
+    if ! command -v curl &> /dev/null; then
+        missing+=("curl")
+    fi
+    
+    if [ ${#missing[@]} -ne 0 ]; then
+        echo -e "${RED}Error: Missing required dependencies: ${missing[*]}${NC}"
+        echo ""
+        echo "Install them with:"
+        echo "  Ubuntu/Debian: sudo apt-get install ${missing[*]}"
+        echo "  macOS:         brew install ${missing[*]}"
+        echo "  Arch:          sudo pacman -S ${missing[*]}"
+        exit 1
+    fi
+}
+
+# Activate virtualenv if specified
+activate_venv() {
+    if [ -n "$AIDER_VENV" ] && [ -f "$AIDER_VENV/bin/activate" ]; then
+        source "$AIDER_VENV/bin/activate"
+    fi
+}
+
+# Check if aider is available
+check_aider() {
+    if ! command -v aider &> /dev/null; then
+        echo -e "${RED}Error: aider is not installed or not in PATH${NC}"
+        echo ""
+        echo "Install aider with:"
+        echo "  pip install aider-chat"
+        echo ""
+        echo "Or set AIDER_VENV to point to aider's virtualenv:"
+        echo "  export AIDER_VENV=/path/to/aider/.venv"
+        exit 1
+    fi
+}
+
+# Fetch models from Ollama
+fetch_models() {
+    local response
+    response=$(curl -s --connect-timeout 5 "$OLLAMA_API_BASE/api/tags" 2>/dev/null)
+    
+    if [ -z "$response" ]; then
+        echo -e "${RED}Error: Could not connect to Ollama at $OLLAMA_API_BASE${NC}"
+        echo ""
+        echo "Make sure Ollama is running:"
+        echo "  ollama serve"
+        echo ""
+        echo "Or set OLLAMA_API_BASE if using a different address:"
+        echo "  export OLLAMA_API_BASE=http://localhost:11434"
+        exit 1
+    fi
+    
+    local models
+    models=$(echo "$response" | jq -r '.models[].name' 2>/dev/null | sort)
+    
+    if [ -z "$models" ]; then
+        echo -e "${YELLOW}Warning: No models found in Ollama${NC}"
+        echo ""
+        echo "Pull a model first:"
+        echo "  ollama pull llama3.2"
+        echo "  ollama pull codellama"
+        exit 1
+    fi
+    
+    echo "$models"
+}
+
+# Main function
+main() {
+    check_dependencies
+    activate_venv
+    check_aider
+    
+    echo -e "${BLUE}Fetching available Ollama models...${NC}"
+    local models
+    models=$(fetch_models)
+    
+    echo -e "${GREEN}Select a model${NC} (↑↓ navigate, type to filter, Enter to select, Ctrl-C to cancel):"
+    echo ""
+    
+    local selected_model
+    selected_model=$(echo "$models" | fzf \
+        --height=50% \
+        --reverse \
+        --border=rounded \
+        --prompt="🤖 Model > " \
+        --header="Available Ollama Models" \
+        --preview-window=hidden \
+        --color="header:yellow,prompt:green")
+    
+    if [ -z "$selected_model" ]; then
+        echo -e "${YELLOW}No model selected. Exiting.${NC}"
+        exit 0
+    fi
+    
+    echo ""
+    echo -e "${GREEN}Starting aider with ollama/${selected_model}${NC}"
+    echo ""
+    
+    # Run aider with the selected model and any additional arguments
+    exec aider --model "ollama/$selected_model" "$@"
+}
+
+main "$@"
